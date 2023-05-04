@@ -2,7 +2,7 @@ name: run belgian_grid_pred
 
 on:
   schedule:
-    - cron: '0 19 * * *' # Every day 2 mins after 4am UTC.
+    - cron: '32 3 * * *' # Every day at 3:30am UTC.
 
 
 jobs: 
