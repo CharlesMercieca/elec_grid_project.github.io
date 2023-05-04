@@ -16,6 +16,6 @@ A number of different features are included in the final model, including holida
 
 A back fit on the past day is also run as a quick a validation step. This allows a Mean Absolute Error calculation: the average error expected, either + or - per 15 minute period.
 
-The script is scheduled through a github action which then renders a flexdashboard dashboard accesible at https://charlesmercieca.github.io/
+The script is scheduled through a github action which then renders a flexdashboard dashboard accesible at https://charlesmercieca.github.io/elec_grid_project.github.io/
 
 For some exploratory data analysis I sketched up while working on this model, see _EDA.html_ in this repo.
