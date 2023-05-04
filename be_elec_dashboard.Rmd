@@ -1,0 +1,136 @@
+---
+title: "Belgian Grid Forecast"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: united
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(lubridate)
+
+data <- readr::read_csv('data/results.csv')
+```
+
+# Forecast
+
+## Column {data-width="650"}
+
+Last refresh: `r Sys.time()`
+
+### 3 day ahead forecast
+
+```{r}
+p1 <- data %>% 
+  filter(type == 'preds') %>% 
+  mutate(Predicted = round(.pred, 2)) %>% 
+  ggplot(aes(x=datetime, y = .pred, label = Predicted))+
+  geom_point(size=0.5)+
+  geom_line()+
+  theme_bw()+
+  ylab('Predicted Load -  MW')+
+  xlab(NULL)
+
+ggplotly(p1, tooltip=c("Predicted", 'datetime'))
+```
+
+## Column {data-width="350"}
+
+### Past 1 day backfit
+
+The final day is held back from the model to assess performance on unseen data for the forecast.
+
+```{r}
+p2 <- data %>% 
+  filter(type == 'backfit') %>% 
+  ggplot()+
+  geom_line(aes(x=date_time, y = total_load), alpha=0.5)+
+  geom_line(aes(x=date_time, y = .pred), color='blue', alpha=0.5)+
+  theme_bw()+
+  ylab('Load -  MW')+
+  xlab(NULL)+
+  labs(title = 'Predicted values (blue) vs. Real Load (black)')
+
+ggplotly(p2)
+```
+
+### Status
+
+```{r}
+latest <- data %>% 
+  filter(type != 'preds') %>% 
+  pull(date_time) %>% 
+  max()-days(1)
+
+backtest <- data %>% 
+  filter(type != 'preds') %>% 
+  pull(date_time) %>% 
+  max() %>% 
+  date()
+
+forecast_from <- data %>% 
+  filter(type == 'preds') %>% 
+  pull(date_time) %>% 
+  min()
+
+mae_calc <- data %>% 
+  filter(type != 'preds') %>%
+  yardstick::mae(.pred, total_load) %>% 
+  pull(.estimate)
+
+cat(paste0('Last data model was trained on: ', latest, '.'))
+cat(paste0('Back test prediction for: ', backtest))
+cat(paste0('Forecast from: ', forecast_from))
+cat(paste0('Seen Mean Absolute Error (per period): ', round(mae_calc, 2), ' MW'))
+```
+
+# Table View
+
+## Column {data-width="350"}
+
+### 3 day ahead forecast
+
+This is a tabular view of the main graph.
+
+```{r}
+data %>% 
+  filter(type == 'preds') %>% 
+  select(datetime, .pred, average_temp) %>% 
+  DT::datatable(extensions = 'Buttons', 
+                options = list(
+    dom = 'Bfrtip',
+    searchable = FALSE,
+    buttons = c('copy', 'print', 'csv', 'excel')))%>% 
+  formatRound('.pred', 0) %>% 
+  formatDate('datetime', method='toUTCString')
+```
+
+# About This
+
+### What is this
+
+This is a quick and dirty experiment using Belgium's largest grid operator (Elia)'s [generous open data commitment](https://opendata.elia.be/pages/home/) to model the previous load and forecast ahead a 3 day horizon.
+
+To check with the actual grid situation, [visit here](https://www.elia.be/en/grid-data) and scroll down to the grid load chart.
+
+### How does this work?
+
+Every day at midnight UTC a script automatically downloads the previous day's load from the elia website, as well as the temperatures in Brussels and Bruges from the [openmeteo API.](https://open-meteo.com/)
+
+A machine learning technique called gradient boosting is used to make a time series prediction for the next 3 days.
+
+A number of different features are included in the final model, including holiday and weekend times, warming effects and recent loads.
+
+A back fit on the past day is also run as a quick a validation step. This allows a Mean Absolute Error calculation: the average error expected, either + or - per 15 minute period.
+
+For some exploratory data analysis I sketched up while working on this model, [see here.](https://charlesmercieca.github.io/EDA)
+
+[www.charlesmercieca.com](www.charlesmercieca.com)

@@ -1,0 +1,52 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+
+data <- read_csv('eda_data.csv')
+```
+
+## Plot Load
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data %>% 
+  ggplot(aes(x=date_time, y = total_load))+
+  geom_line()+
+  theme_bw()
+
+```
+
+## Variance
+
+```{r}
+data %>% 
+  group_by(date, hour) %>% 
+  summarise(total_load = sum(total_load)) %>% 
+  mutate(month = month(date, label=T)) %>% 
+  ggplot(aes(x=hour, y = total_load, group = date, color=month))+
+  geom_line(alpha=0.1)+
+  facet_wrap('month')+
+  theme_bw()+
+  theme(legend.position='none')
+```
+
+## Relationship with Temperature 
+
+```{r}
+data %>% 
+  filter(year>2020) %>% 
+  group_by(date, hour, year ,holiday_flag) %>% 
+  summarise(total_load = sum(total_load), 
+            average_temp = mean(average_temp, na.rm=T)) %>% 
+  ggplot(aes(x=average_temp, y=total_load)) +
+  geom_point(alpha=0.3)+
+  facet_wrap('year')+
+  theme_bw()+
+  geom_smooth(method='loess')
+```

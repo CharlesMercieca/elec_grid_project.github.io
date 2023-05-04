@@ -1,0 +1,63 @@
+name: run belgian_grid_pred
+
+on:
+  schedule:
+    - cron: '2 4 * * *' # Every day 2 mins after 4am UTC.
+
+
+jobs: 
+  belgian_grid:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    # Load repo and install R
+    steps:
+    - uses: actions/checkout@master
+    - uses: r-lib/actions/setup-r@v2
+
+    # install pandoc (to help render html dashboard)
+    - name: Install pandoc
+      run : |
+        brew install pandoc
+
+    # Set-up R
+    - name: Install packages
+      run: |
+        R -e 'install.packages("dplyr")'
+        R -e 'install.packages("readr")'
+        R -e 'install.packages("httr")'
+        R -e 'install.packages("curl")'
+        R -e 'install.packages("tidymodels")'
+        R -e 'install.packages("lubridate")'
+        R -e 'install.packages("openmeteo")'
+        R -e 'install.packages("slider")'
+        R -e 'install.packages("jsonlite")'
+        R -e 'install.packages("janitor")'
+        R -e 'install.packages("bonsai")'
+        R -e 'install.packages("lightgbm")'
+    # Run R script
+    - name: forecast_elec
+      run: Rscript elec_grid_xgboost.r
+    # Generate Dashboard
+    - name: generate dashboard
+      run: |
+        R -e 'install.packages("ggplot2")'
+        R -e 'install.packages("plotly")'
+        R -e 'install.packages("flexdashboard")'
+        R -e 'install.packages("knitr")'
+        R -e 'install.packages("rmarkdown")'
+        R -e 'install.packages("pandoc")'
+        R -e 'install.packages("DT")'
+        R -e 'rmarkdown::render(input = "be_elec_dashboard.Rmd", output_file ="index.html")'
+      
+ # Add new files in data folder, commit along with other modified files, push
+    - name: Commit files
+      run: |
+        git config --local user.name actions-user
+        git config --local user.email "actions@github.com"
+        git add data/*
+        git commit -am "GH ACTION Headlines $(date)"
+        git push origin main
+      env:
+        REPO_KEY: ${{secrets.GITHUB_TOKEN}}
+        username: github-actions
